@@ -39,8 +39,14 @@ gunzip clarknet_aug28.gz
 - **Cadez, Heckerman, Meek et al., *Model-Based Clustering and Visualization of Navigation Patterns on a Web Site* (Data Mining and Knowledge Discovery, 2003)** — 마르코프 체인 혼합모델 + EM, 이 프로젝트의 핵심 참고
 - Gallaugher & McNicholas, arXiv:1802.04849 — 연속시간 마르코프 혼합모델로 확장
 
+## 진행 상황 (2026-11-25)
+
+- [x] **로그정규 피팅 정량화** (`analysis/lognormal_fit.py`, scipy 없이 직접 구현) — ClarkNet 몸통(10~75분위)은 로그정규와 잘 맞지만(KS D=0.128), **꼬리(99분위)는 실측 786초 vs 이론 259초로 크게 벌어짐**. Wilson 논문이 경고한 대로 "긴 간격 = 방치·포기된 세션"일 가능성. 몸통과 꼬리를 다른 모델로 다뤄야 할 수 있음.
+- [x] **Cadez et al. 방식 마르코프 혼합모델 프로토타입** (`model/markov_mixture.py` + `model/test_markov_mixture.py`) — 합성 데이터(구매자 vs 둘러보기 두 페르소나)로 EM이 실제 숨겨진 유형을 **군집 정확도 87%**로 복원, 전이확률도 실제값에 근접(0.8→0.721, 0.9→0.892). 작은 규모에서 설계가 작동함을 확인.
+- [x] **명세 기반 탐색 뼈대** (`model/spec_walk.py`) — OpenAPI 명세를 상태 집합으로 자동 변환. **api-defense-lab(21개 상태)과 reservoir-rtu-lab(6개 상태) 양쪽에서 코드 수정 없이 포팅 확인** — "앱마다 재현기를 다시 짠다"는 원래 문제를 실제로 풀었다는 첫 증거.
+
 ## 다음
 
-- [ ] 위 두 데이터셋의 요청 간격·세션 길이를 로그정규분포로 피팅(scipy), 문헌 수치와 정량 비교
-- [ ] Cadez et al. 방식의 마르코프 혼합모델 프로토타입 (EM, 작은 합성 데이터로)
-- [ ] api-defense-lab의 OpenAPI 명세를 입력으로 받아 탐색 경로를 자동 생성하는 뼈대
+- [ ] 꼬리가 두꺼운 이유(세션 경계 정의 문제인지, 진짜 다른 분포인지) 확인 — 세션 경계(GAP_S) 값을 바꿔 가며 민감도 분석
+- [ ] `spec_walk.py`의 상태에 실제 전이확률 붙이기 — 읽기/쓰기 비율 사전 또는 소량 실측 트래픽
+- [ ] 두 조각(마르코프 혼합모델 + 명세 기반 상태)을 합쳐 실제 트래픽을 내보내는 생성기로
