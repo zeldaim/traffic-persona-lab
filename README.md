@@ -15,7 +15,7 @@ python generator/gen.py <openapi.json 경로> --base-url http://<대상> --users
 ## v1의 알려진 한계 (숨기지 않음)
 
 - **전이확률(`priors.py`)은 실측이 아니라 손으로 정한 기본값이다.** 어떤 앱의 실제 라벨링 트래픽으로도 아직 학습 안 됨 — `model/markov_mixture.py`(EM)로 다시 배우는 게 다음 단계.
-- **인증을 전혀 처리하지 않는다.** api-defense-lab에 실제로 돌려 보니, 로그인 없이 보호된 경로를 반복 요청하는 `browse` 세션이 **기존 `agent` 탐지 룰(lab_block)에 실제로 걸렸다** — 정상 생성기인데 공격 에이전트와 구별이 안 된 것. 토큰 발급·로그인 흐름을 붙이는 게 다음 단계 중 가장 급함.
+- ~~인증을 전혀 처리하지 않는다~~ **해결됨 (`generator/auth.py`)** — 처음엔 로그인 없이 보호된 경로를 반복 요청하는 `browse` 세션이 **기존 `agent` 탐지 룰(lab_block)에 실제로 걸렸다.** 명세에서 회원가입·로그인 경로를 추측해(경로에 'regist'·'token'/'login', 필수 필드는 스키마에서 읽어 채움) 토큰을 받아 붙이는 `auth.py`를 추가한 뒤 api-defense-lab에 다시 돌려 확인 — GET이 전부 200이 되고 오탐도 사라졌다. **단, OAuth2 password 류 패턴만 추측한다** — HMAC·API 키 인증(예: reservoir-rtu-lab)은 아직 못 받고, 세션마다 이유를 보고한다.
 - **쓰기(POST/PUT/PATCH/DELETE) 상태는 실제로 전송 안 한다.** 명세에 요청 본문 예시가 없어 뭘 보내야 할지 모른다 — 시뮬레이션 로그로만 남긴다.
 - **타이밍 절대값은 1995년 다이얼업 시대 수치다** (`timing.py` 의 `speed_scale`로 보정하지만, 어떤 배율이 "지금 웹"에 맞는지는 검증 안 됨).
 
@@ -62,7 +62,8 @@ gunzip clarknet_aug28.gz
 
 ## 다음
 
-- [ ] **인증 처리 — 가장 급함**: 토큰 발급·로그인 흐름을 붙여서 로그인 없이 보호 경로만 때리는 오탐을 없앤다 (lab_traffic.py의 `User` 클래스 참고)
+- [x] ~~인증 처리~~ — `generator/auth.py`, api-defense-lab에서 확인 완료 (OAuth2 password 류만, HMAC·API 키는 아직)
+- [ ] **HMAC·API 키 같은 다른 인증 방식도 지원** — reservoir-rtu-lab(HMAC 서명)에 돌려서 실패하는지 먼저 확인
 - [ ] 쓰기 상태도 실제 전송 — 명세의 요청 본문 스키마에서 최소한의 유효 payload를 자동 생성
 - [ ] `priors.py`의 손으로 정한 전이확률을 `markov_mixture.py`(EM)로 실측 라벨링 트래픽에서 다시 학습
 - [ ] 꼬리가 두꺼운 이유(세션 경계 정의 문제인지, 진짜 다른 분포인지) 확인 — 세션 경계(GAP_S) 값을 바꿔 가며 민감도 분석
