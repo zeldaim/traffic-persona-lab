@@ -1,4 +1,4 @@
-# traffic-persona-lab — 일반화된 트래픽 재현기 (연구 중)
+# traffic-persona-lab — 일반화된 트래픽 재현기 - 미완성
 
 사이트별 로그를 그대로 베끼는 트래픽 재현기는 범용성이 없다. [api-defense-lab](https://github.com/zeldaim/api-defense-lab)의 `traffic/lab_traffic.py`가 그 예시 — DVRA 전용이라 다른 앱(petclinic, 관세청 웹 등)에 쓰려면 매번 다시 짜야 한다. 이 레포는 **앱에 맞춰 손으로 짜지 않아도 되는, 일반화된 합성 트래픽 생성기**를 목표로 한다.
 
