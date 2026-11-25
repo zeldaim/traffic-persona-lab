@@ -53,7 +53,7 @@ def _find_op(spec: dict, keyword: str):
     return None, None
 
 
-def _post(base_url: str, path: str, op: dict, spec: dict, rng: random.Random, overrides: dict):
+def _post(base_url: str, path: str, op: dict, spec: dict, rng: random.Random, overrides: dict, client_ip: str | None):
     rb = op["requestBody"]["content"]
     if "application/x-www-form-urlencoded" in rb:
         ctype, ref = "application/x-www-form-urlencoded", rb["application/x-www-form-urlencoded"]["schema"]
@@ -65,8 +65,10 @@ def _post(base_url: str, path: str, op: dict, spec: dict, rng: random.Random, ov
         data = json.dumps(body).encode()
     else:
         return None, f"지원 안 하는 content-type: {list(rb)}"
-    req = urllib.request.Request(base_url.rstrip("/") + path, data=data, method="POST",
-                                 headers={"Content-Type": ctype})
+    headers = {"Content-Type": ctype}
+    if client_ip:
+        headers["X-Client-IP"] = client_ip
+    req = urllib.request.Request(base_url.rstrip("/") + path, data=data, method="POST", headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             return json.loads(r.read()), None
@@ -76,8 +78,10 @@ def _post(base_url: str, path: str, op: dict, spec: dict, rng: random.Random, ov
         return None, f"{path} -> 연결 실패 {e}"
 
 
-def login(base_url: str, spec: dict, rng: random.Random) -> tuple[str | None, str]:
-    """(토큰 또는 None, 상태 메시지) — 회원가입(있으면) → 로그인 순. 실패하면 이유를 메시지로 남긴다."""
+def login(base_url: str, spec: dict, rng: random.Random, client_ip: str | None = None) -> tuple[str | None, str]:
+    """(토큰 또는 None, 상태 메시지) — 회원가입(있으면) → 로그인 순. 실패하면 이유를 메시지로 남긴다.
+    client_ip 를 꼭 넘겨야 한다 — 안 넘기면 여러 세션의 로그인 시도가 전부 같은(진짜) 접속 IP로 보여
+    탐지기에 '한 출발지가 몰아서 요청'으로 잡힐 수 있다 (실제로 겪은 문제: 20명이 한 IP로 뭉쳐 BOLA 의심 차단됨)."""
     reg_path, reg_op = _find_op(spec, "regist")
     login_path, login_op = _find_op(spec, "token")
     if login_op is None:
@@ -91,11 +95,11 @@ def login(base_url: str, spec: dict, rng: random.Random) -> tuple[str | None, st
         creds = {k: v for k, v in _build_body(reg_op["requestBody"]["content"]
                  .get("application/json", {}).get("schema", {}), spec, rng, {}).items()
                  if k in ("username", "password")}
-        _, reg_err = _post(base_url, reg_path, reg_op, spec, rng, creds)
+        _, reg_err = _post(base_url, reg_path, reg_op, spec, rng, creds, client_ip)
         # 가입 실패해도 로그인은 시도한다 — "이미 등록됨" 같은 실패는 그 계정이 이미 있다는 뜻이라
         # 같은 자격증명으로 로그인이 될 수 있다 (실제로 같은 시드 재실행에서 이 경로를 탔다)
 
-    resp, err = _post(base_url, login_path, login_op, spec, rng, creds)
+    resp, err = _post(base_url, login_path, login_op, spec, rng, creds, client_ip)
     if err:
         detail = f" (회원가입도 실패: {reg_err})" if reg_err else ""
         return None, f"로그인 실패 — {err}{detail}"

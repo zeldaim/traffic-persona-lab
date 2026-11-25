@@ -3,6 +3,7 @@
 사이트별 로그를 그대로 베끼는 트래픽 재현기는 범용성이 없다. [api-defense-lab](https://github.com/zeldaim/api-defense-lab)의 `traffic/lab_traffic.py`가 그 예시 — DVRA 전용이라 다른 앱(petclinic, 관세청 웹 등)에 쓰려면 매번 다시 짜야 한다. 이 레포는 **앱에 맞춰 손으로 짜지 않아도 되는, 일반화된 합성 트래픽 생성기**를 목표로 한다.
 
 > **v1 완성 (2026-11-25)** — `generator/gen.py` 로 OpenAPI 명세 하나만 주면 실제 HTTP 트래픽을 쏜다. "완벽히 검증된 모델"은 아니다 — 알려진 한계는 아래 참고.
+> **독립 평가로 쓴 첫 사례**: api-defense-lab의 "정답지·평가 트래픽이 같은 출처"라는 순환 평가 우려를, 이 생성기로 보낸 정상 트래픽(20명·100건)이 **오탐 차단 0건**인 걸로 확인했다 — [docs/results/api-defense-lab-independent-eval_2026-11-25.md](docs/results/api-defense-lab-independent-eval_2026-11-25.md).
 
 ## 빠르게 써 보기
 
@@ -66,6 +67,7 @@ gunzip clarknet_aug28.gz
 - [x] reservoir-rtu-lab(HMAC 인증)에 돌려서 확인 — **예상대로 로그인 경로를 못 찾는다고 정직하게 보고함.** 그런데 새 문제를 발견: `{site_id}` 같은 경로 변수를 안 채워서 보낸 요청(`GET /api/v1/sites` 등)이 **RTU 자체의 숨은 API 탐지기(6단계)에 `SHADOW_API_PROBE`로 잡혔다** — api-defense-lab의 인증 오탐과 같은 종류의 문제 (생성기가 비현실적이면 탐지기가 공격으로 착각)
 - [x] ~~경로 변수 채우기~~ (`{site_id}`, `{order_id}` 등) — `spec_walk.py`가 path parameter 스키마(타입)를 같이 뽑고, `gen.py`의 `fill_path()`가 타입에 맞는 값으로 채운다. api-defense-lab에서 nginx 로그로 실제 전송된 URL(`/orders/29` 등)까지 확인. 실제 존재하는 ID는 모르니 404는 여전히 나지만(정상), "경로 형태 자체가 명세 밖"으로는 더는 안 보인다.
 - [x] 발견한 김에 버그 하나 더 고침 — `auth.py`가 회원가입이 "이미 등록됨"으로 실패하면 로그인도 안 해 보고 바로 포기하고 있었다. 같은 시드로 재실행하면 실제로 이 경로를 탐(계정이 이미 있으니까) → 가입 실패해도 로그인은 항상 시도하도록 수정
+- [x] **버그 하나 더** — `auth.py`의 회원가입·로그인 요청에 `X-Client-IP`가 빠져 있어서, 여러 세션의 로그인 시도가 전부 같은 접속 IP로 보였다. api-defense-lab 독립 평가 중 20명이 한 IP로 뭉쳐 "BOLA 의심"으로 차단되면서 발견 — 세션별 IP를 넘기도록 고치고, 고친 뒤 20명·100건·오탐 0건으로 재확인했다 ([결과](docs/results/api-defense-lab-independent-eval_2026-11-25.md))
 - [ ] HMAC·API 키 같은 다른 인증 방식도 지원 (위 발견 뒤 우선순위 내림 — 경로 변수부터)
 - [ ] 쓰기 상태도 실제 전송 — 명세의 요청 본문 스키마에서 최소한의 유효 payload를 자동 생성
 - [ ] `priors.py`의 손으로 정한 전이확률을 `markov_mixture.py`(EM)로 실측 라벨링 트래픽에서 다시 학습
