@@ -86,17 +86,19 @@ def login(base_url: str, spec: dict, rng: random.Random) -> tuple[str | None, st
         return None, "로그인 경로를 명세에서 못 찾음 (경로에 'token'·'login'이 없음) — HMAC·API 키 인증일 수 있음"
 
     creds = {}
+    reg_err = None
     if reg_op is not None:
         creds = {k: v for k, v in _build_body(reg_op["requestBody"]["content"]
                  .get("application/json", {}).get("schema", {}), spec, rng, {}).items()
                  if k in ("username", "password")}
-        _, err = _post(base_url, reg_path, reg_op, spec, rng, creds)
-        if err:
-            return None, f"회원가입 실패 — {err}"
+        _, reg_err = _post(base_url, reg_path, reg_op, spec, rng, creds)
+        # 가입 실패해도 로그인은 시도한다 — "이미 등록됨" 같은 실패는 그 계정이 이미 있다는 뜻이라
+        # 같은 자격증명으로 로그인이 될 수 있다 (실제로 같은 시드 재실행에서 이 경로를 탔다)
 
     resp, err = _post(base_url, login_path, login_op, spec, rng, creds)
     if err:
-        return None, f"로그인 실패 — {err}"
+        detail = f" (회원가입도 실패: {reg_err})" if reg_err else ""
+        return None, f"로그인 실패 — {err}{detail}"
     for key in ("access_token", "token", "jwt", "id_token"):
         if key in resp:
             return resp[key], f"로그인 성공 ({login_path})"

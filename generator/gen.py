@@ -30,6 +30,15 @@ from timing import sample_gap  # noqa: E402
 import auth  # noqa: E402
 
 
+def fill_path(path: str, params: list[dict], rng: random.Random) -> str:
+    """{order_id} 같은 경로 변수를 타입에 맞는 그럴듯한 값으로 채운다. 실제로 존재하는 값은 모르니
+    404 는 여전히 날 수 있지만, 최소한 '경로 형태 자체가 명세 밖'으로는 안 보인다 (실제로 겪은 문제)."""
+    for p in params:
+        val = rng.randint(1, 50) if p["type"] in ("integer", "number") else "sample"
+        path = path.replace("{" + p["name"] + "}", str(val))
+    return path
+
+
 def run_session(states, persona, rng, base_url, send, speed_scale, client_ip, token, auth_note):
     seq = sample_session(states, persona, rng)
     by_name = {s["state"]: s for s in states}
@@ -38,7 +47,8 @@ def run_session(states, persona, rng, base_url, send, speed_scale, client_ip, to
         st = by_name[name]
         gap = sample_gap(rng, speed_scale)  # 기록만 — 실제로 간격만큼 멈추려면 time.sleep(gap) 추가
         if st["method"] == "GET" and send:
-            url = base_url.rstrip("/") + st["path"].split("{")[0].rstrip("/")
+            filled_path = fill_path(st["path"], st["path_params"], rng)
+            url = base_url.rstrip("/") + filled_path
             headers = {"X-Client-IP": client_ip}
             if token:
                 headers["Authorization"] = f"Bearer {token}"
@@ -49,7 +59,7 @@ def run_session(states, persona, rng, base_url, send, speed_scale, client_ip, to
                 code = e.code
             except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
                 code = f"오류({e})"
-            print(f"  +{gap:5.1f}초  GET {st['path']} -> {code}")
+            print(f"  +{gap:5.1f}초  GET {filled_path} -> {code}")
         else:
             tag = "전송 안 함(쓰기 상태, v1 한계)" if st["method"] != "GET" else "전송 안 함(--send 없음)"
             print(f"  +{gap:5.1f}초  {st['method']} {st['path']}  [{tag}]")

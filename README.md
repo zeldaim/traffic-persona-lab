@@ -64,7 +64,8 @@ gunzip clarknet_aug28.gz
 
 - [x] ~~인증 처리~~ — `generator/auth.py`, api-defense-lab에서 확인 완료 (OAuth2 password 류만, HMAC·API 키는 아직)
 - [x] reservoir-rtu-lab(HMAC 인증)에 돌려서 확인 — **예상대로 로그인 경로를 못 찾는다고 정직하게 보고함.** 그런데 새 문제를 발견: `{site_id}` 같은 경로 변수를 안 채워서 보낸 요청(`GET /api/v1/sites` 등)이 **RTU 자체의 숨은 API 탐지기(6단계)에 `SHADOW_API_PROBE`로 잡혔다** — api-defense-lab의 인증 오탐과 같은 종류의 문제 (생성기가 비현실적이면 탐지기가 공격으로 착각)
-- [ ] **경로 변수 채우기 — 지금 가장 급함** (`{site_id}`, `{order_id}` 등): 명세의 path parameter 스키마에서 타입에 맞는 값을 만들어 채운다. 실제 값(존재하는 주문 ID 등)을 모르면 여전히 404가 나겠지만, 최소한 "경로 형태 자체가 틀려서 명세 밖으로 보이는" 문제는 없어진다
+- [x] ~~경로 변수 채우기~~ (`{site_id}`, `{order_id}` 등) — `spec_walk.py`가 path parameter 스키마(타입)를 같이 뽑고, `gen.py`의 `fill_path()`가 타입에 맞는 값으로 채운다. api-defense-lab에서 nginx 로그로 실제 전송된 URL(`/orders/29` 등)까지 확인. 실제 존재하는 ID는 모르니 404는 여전히 나지만(정상), "경로 형태 자체가 명세 밖"으로는 더는 안 보인다.
+- [x] 발견한 김에 버그 하나 더 고침 — `auth.py`가 회원가입이 "이미 등록됨"으로 실패하면 로그인도 안 해 보고 바로 포기하고 있었다. 같은 시드로 재실행하면 실제로 이 경로를 탐(계정이 이미 있으니까) → 가입 실패해도 로그인은 항상 시도하도록 수정
 - [ ] HMAC·API 키 같은 다른 인증 방식도 지원 (위 발견 뒤 우선순위 내림 — 경로 변수부터)
 - [ ] 쓰기 상태도 실제 전송 — 명세의 요청 본문 스키마에서 최소한의 유효 payload를 자동 생성
 - [ ] `priors.py`의 손으로 정한 전이확률을 `markov_mixture.py`(EM)로 실측 라벨링 트래픽에서 다시 학습

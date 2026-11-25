@@ -14,18 +14,24 @@ from collections import Counter
 
 def states_from_spec(spec: dict) -> list[dict]:
     """명세의 각 (메서드, 경로)를 상태 하나로. method 로 대략적인 성격(읽기/쓰기)을 구분해 둔다 — 나중에
-    전이확률 사전(prior)으로 쓸 수 있게 (GET=read, POST/PUT/PATCH/DELETE=write)."""
+    전이확률 사전(prior)으로 쓸 수 있게 (GET=read, POST/PUT/PATCH/DELETE=write).
+    경로 변수(path parameter)도 이름·타입과 함께 뽑아 둔다 — 안 채우면 `/orders/{order_id}` 를 그대로
+    보내게 돼 명세 밖 호출처럼 보인다 (실제로 겪은 문제, generator/README 참고)."""
     out = []
     for path, item in spec.get("paths", {}).items():
+        path_level_params = item.get("parameters", [])
         for method, op in item.items():
             if method == "parameters":
                 continue
+            params = [p for p in path_level_params + op.get("parameters", []) if p.get("in") == "path"]
             out.append({
                 "state": f"{method.upper()} {path}",
                 "method": method.upper(),
                 "path": path,
                 "kind": "read" if method.lower() == "get" else "write",
                 "summary": op.get("summary") or op.get("operationId") or "",
+                "path_params": [{"name": p["name"], "type": p.get("schema", {}).get("type", "string")}
+                               for p in params],
             })
     return out
 
