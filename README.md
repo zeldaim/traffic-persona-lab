@@ -63,7 +63,9 @@ gunzip clarknet_aug28.gz
 ## 다음
 
 - [x] ~~인증 처리~~ — `generator/auth.py`, api-defense-lab에서 확인 완료 (OAuth2 password 류만, HMAC·API 키는 아직)
-- [ ] **HMAC·API 키 같은 다른 인증 방식도 지원** — reservoir-rtu-lab(HMAC 서명)에 돌려서 실패하는지 먼저 확인
+- [x] reservoir-rtu-lab(HMAC 인증)에 돌려서 확인 — **예상대로 로그인 경로를 못 찾는다고 정직하게 보고함.** 그런데 새 문제를 발견: `{site_id}` 같은 경로 변수를 안 채워서 보낸 요청(`GET /api/v1/sites` 등)이 **RTU 자체의 숨은 API 탐지기(6단계)에 `SHADOW_API_PROBE`로 잡혔다** — api-defense-lab의 인증 오탐과 같은 종류의 문제 (생성기가 비현실적이면 탐지기가 공격으로 착각)
+- [ ] **경로 변수 채우기 — 지금 가장 급함** (`{site_id}`, `{order_id}` 등): 명세의 path parameter 스키마에서 타입에 맞는 값을 만들어 채운다. 실제 값(존재하는 주문 ID 등)을 모르면 여전히 404가 나겠지만, 최소한 "경로 형태 자체가 틀려서 명세 밖으로 보이는" 문제는 없어진다
+- [ ] HMAC·API 키 같은 다른 인증 방식도 지원 (위 발견 뒤 우선순위 내림 — 경로 변수부터)
 - [ ] 쓰기 상태도 실제 전송 — 명세의 요청 본문 스키마에서 최소한의 유효 payload를 자동 생성
 - [ ] `priors.py`의 손으로 정한 전이확률을 `markov_mixture.py`(EM)로 실측 라벨링 트래픽에서 다시 학습
 - [ ] 꼬리가 두꺼운 이유(세션 경계 정의 문제인지, 진짜 다른 분포인지) 확인 — 세션 경계(GAP_S) 값을 바꿔 가며 민감도 분석
